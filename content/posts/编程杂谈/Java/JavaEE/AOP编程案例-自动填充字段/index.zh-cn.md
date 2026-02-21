@@ -6,7 +6,7 @@ categories:
   - Java
   - JavaEE
 title: AOP编程案例-自动填充字段
-draft: "true"
+draft: "false"
 tags:
   - AOP
   - SpringBoot
