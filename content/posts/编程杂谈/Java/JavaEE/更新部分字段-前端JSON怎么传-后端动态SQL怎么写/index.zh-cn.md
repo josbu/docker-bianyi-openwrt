@@ -1,6 +1,6 @@
 ---
 date: 2026-02-21T10:27:04+08:00
-lastmod: 2026-02-21T13:38:16+08:00
+lastmod: 2026-02-21T13:56:22+08:00
 categories:
   - 编程杂谈
   - Java
@@ -71,6 +71,7 @@ public class UserPatchDTO {
 ```
 
 分析：如果前端传过来的是空串，那么DTO序列化后，phone字段就是""而不是null，意味只有第二种动态SQL写法能够更新字段。
+
 
 
 ## 前端传null
@@ -167,6 +168,7 @@ public class Employee implements Serializable {
  Error updating database.  Cause: java.lang.IllegalArgumentException: invalid comparison: java.time.LocalDateTime and java.lang.String
 ```
 
+- 对于String类型，如果允许设置空值，只需要判断 `xx != null`即可，如果不允许设置空值，可以组合设置为 `xx != null and xx != ''`
 - 对于非String类型，应该约定只要设置了值，就不要清空了，而是仅允许修改为另一个有效值。
 
 
