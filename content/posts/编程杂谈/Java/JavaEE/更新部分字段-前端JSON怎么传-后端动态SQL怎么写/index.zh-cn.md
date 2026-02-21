@@ -52,7 +52,6 @@ public class UserPatchDTO {
 ```
 - 虽然的确知道了哪些字段要更新，但是这样怎么用在动态SQL语句？只能在service层逐个判断？看似合理，实际不可行。
 
-
 - 所以衍生出了新的问题：有什么场景是前端必须传null的吗？对于一个表格，如果要设置某个字段为空，设置空字符串不就好了。这样后端DTO接收对象的时候，序列化就是空串而不是null，就能清楚的知道到底想干什么。
 
 
@@ -96,62 +95,85 @@ public class UserPatchDTO {
 
 ## MyBatis动态SQL中，何时判断null，何时判断空串'' ?
 
-具体来说，何时使用`phone != null` ，何时使用 `phone != null and phone != ''` ，以下动态SQL合理吗？
+是否判断 ''，取决于字段类型是否是 String。
 
+- String 类型：通常要判断 != null and != ''
+- 非 String 类型（Integer / Long / LocalDateTime）：只能判断 != null，不能判断 ''
+
+
+例如有如下实体类
+```java
+
+public class Employee implements Serializable {  
+  
+    private static final long serialVersionUID = 1L;  
+  
+    private Long id;  
+  
+    private String username;  
+  
+    private String name;  
+  
+    private String password;  
+  
+    private String phone;  
+  
+    private String sex;  
+  
+    private String idNumber;  
+  
+    private Integer status;  
+  
+    //@JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")  
+    private LocalDateTime createTime;  
+  
+    //@JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")  
+    private LocalDateTime updateTime;  
+  
+    private Long createUser;  
+  
+    private Long updateUser;  
+  
+}
+```
+
+
+那么动态SQL可以写成
 ```xml
 <update id="updateById">  
     update employee  
-        <set>  
-            <if test="username != null and username != ''"> username = #{username}, </if>  
-            <if test="name != null and name != ''"> name = #{name}, </if>  
-            <if test="password != null and password != ''"> password = #{password}, </if>  
-            <if test="phone != null and phone != ''"> phone = #{phone}, </if>  
-            <if test="sex != null and sex != ''"> sex = #{sex}, </if>  
-            <if test="idNumber != null and idNumber != ''"> idNumber = #{idNumber}, </if>  
-            <if test="status != null and status != ''"> status = #{status}, </if>  
-            <if test="createTime != null and createTime != ''"> createTime = #{createTime}, </if>  
-            <if test="updateTime != null and updateTime != ''"> updateTime = #{updateTime}, </if>  
-            <if test="createUser != null and createUser != ''"> createUser = #{createUser}, </if>  
-            <if test="updateUser != null and updateUser != ''"> updateUser = #{updateUser}, </if>  
-        </set>  
+    <set>  
+        <!-- String：判 null + '' -->  
+        <if test="username != null and username != ''"> username = #{username}, </if>  
+        <if test="name != null and name != ''"> name = #{name}, </if>  
+        <if test="password != null and password != ''"> password = #{password}, </if>  
+        <if test="phone != null and phone != ''"> phone = #{phone}, </if>  
+        <if test="sex != null and sex != ''"> sex = #{sex}, </if>  
+        <if test="idNumber != null and idNumber != ''"> id_number = #{idNumber}, </if>  
+  
+        <!-- 非 String：只判 null -->  
+        <if test="status != null"> status = #{status}, </if>  
+        <if test="createTime != null and createTime != ''"> create_time = #{createTime}, </if>  
+        <if test="updateTime != null"> update_time = #{updateTime}, </if>  
+        <if test="createUser != null"> create_user = #{createUser}, </if>  
+        <if test="updateUser != null"> update_user = #{updateUser}, </if>  
+    </set>  
     where id = #{id}  
 </update>
 ```
-分析：这里所有的字段都判断了null和空串，意味着如果字段没有被赋值，就不更新，这样就能保证在数据库中，他一定有值。
+如果非String类型判断空串，mybatis会报错
 
-有哪些字段是必须有值的？取决于项目的约定。
-- 例1，项目约定status是账号状态，必须是0或者1，这样前端在传值的时候，必须明确设置字段，而不能传null或者空串，如果前端传了空串，这个动态SQL就会认为不更新此字段。
-- 例2，项目约定phone可以为空，假如有一位用户，前期设置了号码为`12345678999`，现在数据库中该字段存着该号码。此时用户又想删掉该号码，那么前端传过来的字段就是 `{"phone": ""}` 而不是 `{"phone": null}` 因为前者可以被DTO序列化为空串，而后者被DTO识别为null。
-
-
-所以，动态SQL语句优化后，变成如下语句。
-```xml
-    <update id="updateById">
-        update employee
-            <set>
-                <if test="username != null"> username = #{username}, </if>
-                <if test="name != null"> name = #{name}, </if>
-                <if test="password != null"> password = #{password}, </if>
-                <if test="phone != null"> phone = #{phone}, </if>
-                <if test="sex != null"> sex = #{sex}, </if>
-                <if test="idNumber != null"> idNumber = #{idNumber}, </if>
-                <if test="status != null and status != ''"> status = #{status}, </if>
-                <if test="createTime != null and createTime != ''"> createTime = #{createTime}, </if>
-                <if test="updateTime != null and updateTime != ''"> updateTime = #{updateTime}, </if>
-                <if test="createUser != null and createUser != ''"> createUser = #{createUser}, </if>
-                <if test="updateUser != null and updateUser != ''"> updateUser = #{updateUser}, </if>
-            </set>
-        where id = #{id}
-    </update>
+```
+ Error updating database.  Cause: java.lang.IllegalArgumentException: invalid comparison: java.time.LocalDateTime and java.lang.String
 ```
 
-意味着`status, createTime, updateTime, createUser, updateUser`都不允许为空串，必须赋值才更新，其余字段无所谓
+- 对于非String类型，应该约定只要设置了值，就不要清空了，而是仅允许修改为另一个有效值。
 
 
 
 ## 总结
-1. 前端如果要设置某个字段为空，不要传null，而是空串。
-2. Mybatis动态SQL更新部分字段时，如果允许空串，那么仅仅用`xx !=null` 判断即可。如果不允许空串，则同时使用`xx !=null and xx != ''`
+1. 前端如果要设置某个字段为空，不要传null，而是空串，但是这只能对字符串有效。
+2. 对于非字符串类型，应该约定只要设置了就仅允许修改为另一个有效值，前端传null表示不做任何操作而不是清空字段。
 
 
 
