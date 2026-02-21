@@ -50,22 +50,22 @@ public class UserPatchDTO {
     // getters...
 }
 ```
-虽然的确知道了哪些字段要更新，但是这样怎么用在动态SQL语句？只能在service层逐个判断？看似合理，实际不可行。
+- 虽然的确知道了哪些字段要更新，但是这样怎么用在动态SQL语句？只能在service层逐个判断？看似合理，实际不可行。
 
 
-所以衍生出了新的问题：有什么场景是前端必须传null的吗？对于一个表格，如果要设置某个字段为空，设置空字符串不就好了。这样后端DTO接收对象的时候，序列化就是空串而不是null，就能清楚的知道到底想干什么。
+- 所以衍生出了新的问题：有什么场景是前端必须传null的吗？对于一个表格，如果要设置某个字段为空，设置空字符串不就好了。这样后端DTO接收对象的时候，序列化就是空串而不是null，就能清楚的知道到底想干什么。
 
 
 ## 前端串空串而不是null
 假如前端传过来的是 `{"phone": ""}`  在使用动态SQL时，以下哪个SQL语句能够设置空号码？
 
-一，同时判断null和phone
+### 一，同时判断null和phone
 也就是说，当DTO中的phone字段为null或者为空串时，不更新字段
 ```xml
 <if test="phone != null and phone != ''"> phone = #{phone}, </if> 
 ```
 
-二，仅判断null
+### 二，仅判断null
 此语句的含义是，当DTO中的phone字段为null时，不更新字段，其他情况，包括空串，也必须更新字段。
 ```xml
 <if test="phone != null"> phone = #{phone}, </if> 
@@ -78,13 +78,13 @@ public class UserPatchDTO {
 
 假如前端传过来的是 `{"phone": null}`  在使用动态SQL时，以下哪个SQL语句能够设置空号码？
 
-一，同时判断null和phone
+### 一，同时判断null和phone
 也就是说，当DTO中的phone字段为null或者为空串时，不更新字段
 ```xml
 <if test="phone != null and phone != ''"> phone = #{phone}, </if> 
 ```
 
-二，仅判断null
+### 二，仅判断null
 此语句的含义是，当DTO中的phone字段为null时，不更新字段，其他情况，包括空串，也必须更新字段。
 ```xml
 <if test="phone != null"> phone = #{phone}, </if> 
