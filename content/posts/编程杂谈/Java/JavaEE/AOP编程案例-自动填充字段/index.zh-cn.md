@@ -24,7 +24,7 @@ series: []
 由于mapper层还存在查询方法，我们不需要这些方法，而仅仅使用`execution(* com.sky.mapper.*.*(..))` 又太宽泛，因此打算自定义注解@Autofill，把需要增强的方法上手动添加该注解。
 
 
-- 自定义注解Autofill
+### 自定义注解Autofill
 ```java
 package com.sky.annotation;  
   
@@ -44,7 +44,30 @@ public @interface AutoFill {
 }
 ```
 
+注意到我们在注解中使用了一个OperationType作为成员，这是为了区分UPDATE和INSERT的枚举类型
+```java
+package com.sky.enumeration;  
+  
+/**  
+ * 数据库操作类型  
+ */  
+public enum OperationType {  
+  
+    /**  
+     * 更新操作  
+     */  
+    UPDATE,  
+  
+    /**  
+     * 插入操作  
+     */  
+    INSERT  
+  
+}
+```
 
+### 拦截Mapper
+现在我们直接在Mapper中拦截所有的INSERT和UPDATE方法，往这些方法上加自定义注解。
 - CategoryMapper
 ```java
 package com.sky.mapper;
@@ -84,14 +107,11 @@ public interface CategoryMapper {
     @Delete("delete from category where id = #{id}")
     void deleteById(Long id);
 }
-
 ```
 
 
-
-
-`@PointCut` 写法
-
+### `@PointCut` 写法
+使用表达式逻辑运算，保证是mapper下的@Autofill注解
 ```java
 @Pointcut("execution(* com.sky.mapper.*.*(..)) && @annotation(com.sky.annotation.AutoFill)")  
 public void autoFillPointCut() {}
